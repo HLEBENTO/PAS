@@ -228,142 +228,48 @@ Me.CustomData = Ini.ToString();
 public void Main(string argument, UpdateType uType)
 {
 double lastRun = Runtime.TimeSinceLastRun.TotalSeconds;
-timeForUpdateAP += lastRun;
-timeForUpdateINI += lastRun;
-timeForUpdateBlocks += lastRun;
-timeForAlarmDelay += lastRun;
+timeForUpdateAP += lastRun;timeForUpdateINI += lastRun;timeForUpdateBlocks += lastRun;timeForAlarmDelay += lastRun;
 if (WorkMode == "plane") if (AP.ErrListNotEmpty()) timeToClearErrors += lastRun;
 if (wasMainPartExecuted) { RP.saveRuntime(); wasMainPartExecuted = false; }
-
-if (uType == UpdateType.Terminal || uType == UpdateType.Script || uType == UpdateType.Trigger || uType == UpdateType.IGC)
-{
-	if (WorkMode == "plane")
-	{
-		int n = 0;
-		bool isNumeric = int.TryParse(argument, out n);
-		if (isNumeric == true)
-		{
-			AP.WaypointNum = Math.Max(n, 0);
-			Ini.Set("Storage", "Current Waypoint", AP.WaypointNum);
-			Me.CustomData = Ini.ToString();
-		}
-		else
-		{
-			string[] parsedArg = argument.Split(' ');
-			if (parsedArg.Length == 2)
-				switch (parsedArg[0].ToLower())
-				{
-					case "land":
-						DisAll();
-						AP.OverrideLanding(parsedArg[1]);
-						break;
-					case "takeoff":
-						DisAll();
-						AP.OverrideTakeoff(parsedArg[1]);
-						break;
-					case "import":
-						AP.ImportRoute(parsedArg[1]);
-						break;
-					case "export":
-						AP.ExportRoute(parsedArg[1]);
-						break;
-					case "build":
-						AP.BuildRoute(false, parsedArg[1]);
-						break;
-					case "build_circle":
-						AP.BuildRoute(true, parsedArg[1]);
-						break;
-					default: break;
-				}
-			else if (parsedArg.Length == 3) switch (parsedArg[0].ToLower())
-				{
-					case "build":
-						AP.BuildRoute(false, parsedArg[2], parsedArg[1]);
-						break;
-					case "build_circle":
-						AP.BuildRoute(true, parsedArg[2], parsedArg[1]);
-						break;
-					case "land":
-						DisAll();
-						AP.OverrideLanding(parsedArg[1], parsedArg[2]);
-						break;
-					case "takeoff":
-						DisAll();
-						AP.OverrideTakeoff(parsedArg[1], parsedArg[2]);
-						break;
-					default: break;
-				}
-			else switch (argument.ToLower())
-				{
-					case "calibrate":
-						AP.CalibrateAltitude();
-						break;
-					case "record_point":
-						AP.RecordRoutePoint();
-						break;
-					case "repeat":
-						AP.Repeat(!AP.RepeatRoute);
-						break;
-					case "repeat_on":
-						AP.Repeat(true);
-						break;
-					case "repeat_off":
-						AP.Repeat(false);
-						break;
-					case "autopilot":
-						AP.SwitchCruise(false); AP.ResetBools();
-						AP.SwitchAP(!AP.ApEngaged);
-						break;
-					case "ap_on":
-						AP.SwitchCruise(false); AP.ResetBools();
-						AP.SwitchAP(true);
-						break;
-					case "ap_off":
-						AP.SwitchAP(false); AP.ResetBools();
-						break;
-					case "cruise":
-						AP.SwitchAP(false); AP.ResetBools();
-						AP.SwitchCruise(!AP.CruiseEngaged);
-						break;
-					case "cruise_on":
-						AP.SwitchAP(false); AP.ResetBools();
-						AP.SwitchCruise(true);
-						break;
-					case "cruise_off":
-						AP.SwitchCruise(false); AP.ResetBools();
-						break;
-					case "brakes":
-						LG.SetBrakes(!LG.Brakes);
-						break;
-					case "stop":
-						AP.OverrideStop();
-						break;
-					case "land":
-						DisAll();
-						AP.OverrideLanding("");
-						break;
-					case "takeoff":
-						DisAll();
-						AP.OverrideTakeoff("");
-						break;
-					case "next": AP.ResetBools(); AP.WaypointNum++; break;
-					case "prev": AP.ResetBools(); AP.WaypointNum--; break;
-					case "recompile":
-						Initialize(); break;
-					default:
-						break;
-				}
-		}
-	}
-	switch (argument.ToLower())
-	{
-		case "toggle":
-			if (Runtime.UpdateFrequency == UpdateFrequency.Update1 || Runtime.UpdateFrequency == UpdateFrequency.Update10 || Runtime.UpdateFrequency == UpdateFrequency.Update100)
-				Runtime.UpdateFrequency = UpdateFrequency.None;
-			else Runtime.UpdateFrequency = UpdateFrequency.Update1; break;
-		default: break;
-	}
-}
+#region Arguments
+if (uType == UpdateType.Terminal || uType == UpdateType.Script || uType == UpdateType.Trigger || uType == UpdateType.IGC){
+if (WorkMode == "plane"){
+int n = 0;if (int.TryParse(argument, out n)){AP.WaypointNum = Math.Max(n, 0);Ini.Set("Storage", "Current Waypoint", AP.WaypointNum);Me.CustomData = Ini.ToString();}
+else{string[] parsedArg = argument.Split(' ');
+if (parsedArg.Length == 2)
+switch (parsedArg[0].ToLower()){
+case "land":DisAll();AP.OverrideLanding(parsedArg[1]);break;
+case "takeoff":DisAll();AP.OverrideTakeoff(parsedArg[1]);break;
+case "import":AP.ImportRoute(parsedArg[1]);break;
+case "export":AP.ExportRoute(parsedArg[1]);break;
+case "build":AP.BuildRoute(false, parsedArg[1]);break;
+case "build_circle":AP.BuildRoute(true, parsedArg[1]);break;default: break;}
+else if (parsedArg.Length == 3) switch (parsedArg[0].ToLower()){
+case "build":AP.BuildRoute(false, parsedArg[2], parsedArg[1]);break;
+case "build_circle":AP.BuildRoute(true, parsedArg[2], parsedArg[1]);break;
+case "land":DisAll();AP.OverrideLanding(parsedArg[1], parsedArg[2]);break;
+case "takeoff":DisAll();AP.OverrideTakeoff(parsedArg[1], parsedArg[2]);break;default: break;}
+else switch (argument.ToLower()){
+case "calibrate":AP.CalibrateAltitude();break;
+case "record_point":AP.RecordRoutePoint();break;
+case "repeat":AP.Repeat(!AP.RepeatRoute);break;
+case "repeat_on":AP.Repeat(true);break;
+case "repeat_off":AP.Repeat(false);break;
+case "autopilot":AP.SwitchCruise(false); AP.ResetBools();AP.SwitchAP(!AP.ApEngaged);break;
+case "ap_on":AP.SwitchCruise(false); AP.ResetBools();AP.SwitchAP(true);break;
+case "ap_off":AP.SwitchAP(false); AP.ResetBools();break;
+case "cruise":AP.SwitchAP(false); AP.ResetBools();AP.SwitchCruise(!AP.CruiseEngaged);break;
+case "cruise_on":AP.SwitchAP(false); AP.ResetBools();AP.SwitchCruise(true);break;
+case "cruise_off":AP.SwitchCruise(false); AP.ResetBools();break;
+case "brakes":LG.SetBrakes(!LG.Brakes);break;
+case "stop":AP.OverrideStop();break;
+case "land":DisAll();AP.OverrideLanding("");break;
+case "takeoff":DisAll();AP.OverrideTakeoff("");break;
+case "next": AP.ResetBools(); AP.WaypointNum++; break;
+case "prev": AP.ResetBools(); AP.WaypointNum--; break;
+case "recompile":Initialize(); break;
+default:break;}}}switch (argument.ToLower()){case "toggle":Runtime.UpdateFrequency = (Runtime.UpdateFrequency == UpdateFrequency.Update1) ? UpdateFrequency.None : UpdateFrequency.Update1; break;default: break;}}
+#endregion
 if (timeForAlarmDelay >= SB.CurDelay) { timeForAlarmDelay = 0; SB.update(); }
 if (timeForUpdateINI >= iniUpd)
 {
@@ -544,25 +450,16 @@ public void ShowStatus()
 			errors = "\n LCD Error:\n" + errors + "displays were not found.\n";
 
 			if (!AllDisplays) MyScreenData.Append(errors);
-			if (LG.ServiceEnabled)
-			{
-				MyScreenData.Append("\n Landing Gear Service: ON");
-				if (!LG.TReady) MyScreenData.Append("\n Landing Gear Error:\n '" + LGTag + "' Timer Block not found!");
-				if (!LG.IReady) MyScreenData.Append("\n Landing Gear Error:\n '" + LGIndTag + "' Indicator Block not found\n (Any functional block. Add it to Timer's toolbar (on/off)).\n");
-				if (!LG.CReady) MyScreenData.Append("\n Landing Gear Warn:\n '" + LGTag + "' Remote Control(s) not found\n (Used for braking. Place on subgrid suspensions).\n");
-			}
+			if (LG.ServiceEnabled){
+			MyScreenData.Append("\n Landing Gear Service: ON");
+			if (!LG.TReady) MyScreenData.Append("\n Landing Gear Error:\n '" + LGTag + "' Timer Block not found!");
+			if (!LG.IReady) MyScreenData.Append("\n Landing Gear Error:\n '" + LGIndTag + "' Indicator Block not found\n (Any functional block. Add it to Timer's toolbar (on/off)).\n");
+			if (!LG.CReady) MyScreenData.Append("\n Landing Gear Warn:\n '" + LGTag + "' Remote Control(s) not found\n (Used for braking. Place on subgrid suspensions).\n");}
 			else MyScreenData.Append("\n Landing Gear Service: OFF");
+
 			WriteSB();
-			MyScreenData.Append("\n TCAS: ");
-			if (ap.UseLandTCAS && !ap.UseTCAS) MyScreenData.Append("Only On Landing");
-			else if (!ap.UseLandTCAS && ap.UseTCAS) MyScreenData.Append("Only In Flight");
-			else if (ap.UseLandTCAS && ap.UseTCAS) MyScreenData.Append("ON");
-			else if (!ap.UseLandTCAS && !ap.UseTCAS) MyScreenData.Append("OFF");
-			MyScreenData.Append("\n GPWS: ");
-			if (ap.UseLandGPWS && !ap.UseGPWS) MyScreenData.Append("Only On Landing");
-			else if (!ap.UseLandGPWS && ap.UseGPWS) MyScreenData.Append("Only In Flight");
-			else if (ap.UseLandGPWS && ap.UseGPWS) MyScreenData.Append("ON");
-			else if (!ap.UseLandGPWS && !ap.UseGPWS) MyScreenData.Append("OFF");
+			MyScreenData.Append("\n TCAS: " +(ap.UseLandTCAS && !ap.UseTCAS ? "Only On Landing" :(!ap.UseLandTCAS && ap.UseTCAS ? "Only In Flight" :(ap.UseLandTCAS && ap.UseTCAS ? "ON" :(!ap.UseLandTCAS && !ap.UseTCAS ? "OFF" : "")))));
+			MyScreenData.Append("\n GPWS: " +(ap.UseLandGPWS && !ap.UseGPWS ? "Only On Landing" :(!ap.UseLandGPWS && ap.UseGPWS ? "Only In Flight" :(ap.UseLandGPWS && ap.UseGPWS ? "ON" :(!ap.UseLandGPWS && !ap.UseGPWS ? "OFF" : "")))));
 			MyScreenData.Append(ap.GetErrorsList());
 		}
 	}
@@ -573,20 +470,15 @@ public void ShowStatus()
 		WriteSB();
 	}
 	MyScreenData.Append("\n Next Update: " + Math.Round(blocksUpd - Parent.timeForUpdateBlocks, 1) + " sec");
-
 	MyScreenData.Append("\n Runtime: L " + RP.lastMainPartRuntime + " ms. Av " + RP.RunTimeAvrEMA + " ms\n Instructions used: " + Parent.Runtime.CurrentInstructionCount + "/" + Parent.Runtime.MaxInstructionCount + "\n");
 	MyScreen.WriteText(MyScreenData); Parent.Echo(MyScreenData.ToString());
 }
-void WriteSB()
-{
-	if (SB.ServiceEnabled)
-	{
-		MyScreenData.Append("\n Warning System: ON");
-		if (!SB.SReady) MyScreenData.Append("\n Warning System Error:\n '" + SBtag + "' Sound Block not found.\n");
-		if (!SB.LReady) MyScreenData.Append("\n Warning System Error:\n '" + SBtag + "' Lighting Block not found.\n");
-	}
-	else MyScreenData.Append("\n Warning System: OFF");
-}
+void WriteSB(){
+if (SB.ServiceEnabled){
+MyScreenData.Append("\n Warning System: ON");
+if (!SB.SReady) MyScreenData.Append("\n Warning System Error:\n '" + SBtag + "' Sound Block not found.\n");
+if (!SB.LReady) MyScreenData.Append("\n Warning System Error:\n '" + SBtag + "' Lighting Block not found.\n");
+}else MyScreenData.Append("\n Warning System: OFF");}
 }
 
 #endregion
@@ -620,7 +512,7 @@ public bool updateBlocks()
 	if (Blocks.Count > 0) BeaconStart = Blocks.First(x => x.CustomData.Contains(StartBeaconTag) && x != Parent.Me);
 	Blocks.Clear(); Parent.GridTerminalSystem.GetBlocksOfType(Blocks, x => x.CustomData.Contains(StopBeaconTag) && x != Parent.Me);
 	if (Blocks.Count > 0) BeaconStop = Blocks.First(x => x.CustomData.Contains(StopBeaconTag) && x != Parent.Me);
-	if (BeaconStart != null && BeaconStop != null) Ready = true; else Ready = false;
+	Ready = (BeaconStart != null && BeaconStop != null);
 	return false;
 }
 }
@@ -1066,7 +958,7 @@ public void updateBlocks(string controllerName, string waypointsBlockName, strin
 	Parent.GridTerminalSystem.GetBlocksOfType(airbrakes, x => x.IsSameConstructAs(RC) && x.CustomName.Contains("Air Brake"));
 	if (RCReady != lastRC) { GetPlanetStats(); lastRC = RCReady; }
 }
-public void UpdateAngles() { MaxRadPitch = MathHelper.ToRadians(MaxPitchAngle); MaxRadRoll = MathHelper.ToRadians(MaxRollAngle); MaxRadPitchSpd = MathHelper.ToRadians(MaxPitchSpeed); MaxRadRollSpd = MathHelper.ToRadians(MaxRollSpeed); MaxRadYawSpd = MathHelper.ToRadians(MaxYawSpeed); }
+public void UpdateAngles() { MaxRadPitch = ToR(MaxPitchAngle); MaxRadRoll = ToR(MaxRollAngle); MaxRadPitchSpd = ToR(MaxPitchSpeed); MaxRadRollSpd = ToR(MaxRollSpeed); MaxRadYawSpd = ToR(MaxYawSpeed); }
 public bool Update()
 {
 	if (!RCReady || RC.Closed || Sealevel_Calibrate == 0) return false;
@@ -1316,7 +1208,7 @@ public bool Takeoff(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 	if (SurfaceAlt > AltLimit + 10) PullUp = false;
 	if (MyVelHor < VRotate) { DirToSlidingTarget = PointToPointCourse; PullUp = false; }
 	else if (AltAboveRW > GearUpAlt || PullUp) { LG.GearUp(); DirToSlidingTarget = PointToPointCourse - GravityVector * MaxRadPitch; }
-	else DirToSlidingTarget = PointToPointCourse - GravityVector * MathHelper.ToRadians(5);
+	else DirToSlidingTarget = PointToPointCourse - GravityVector * ToR(5);
 	if (AltAboveRW > TakeoffEndAlt) { ResetBools(); return true; }
 
 	if (V2 < VRotate || V2 - VRotate <= 5) V2 += 10;
@@ -1400,7 +1292,7 @@ public bool Landing(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 		PointToPointCourse = Vector3D.Normalize(RunwayStop - RunwayStart);
 		VecToRunwayStart = RunwayStart - MyPos;
 		DistanceToPoint = VecToRunwayStart.Dot(PointToPointCourse);
-		double DistToGlideSlopeStart = Clamp(BackupAlt / Math.Tan(MathHelper.ToRadians(DescendAngle)), 1000, 7500); //Parent.Echo("\n" + DistToGlideSlopeStart);
+		double DistToGlideSlopeStart = Clamp(BackupAlt / Math.Tan(ToR(DescendAngle)), 1000, 7500); //Parent.Echo("\n" + DistToGlideSlopeStart);
 		if (DistanceToPoint >= DistToGlideSlopeStart) onGlideSlope = true;
 		else return false;
 	}
@@ -1410,7 +1302,7 @@ public bool Landing(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 	SlidingTargetDist = Clamp(DistanceToPoint / 4, 100, 500);
 	SlidingTarget = RunwayStart - PointToPointCourse * (DistanceToPoint - SlidingTargetDist);
 
-	double h = Clamp(DistanceToPoint * MathHelper.ToRadians(DescendAngle), 10, 3000);
+	double h = Clamp(DistanceToPoint * ToR(DescendAngle), 10, 3000);
 
 	SlidingTarget -= GravityVector * (h + PitchCorrection);
 	if (!PullUp) DirToSlidingTarget = Vector3D.Normalize(SlidingTarget - MyPos);
@@ -1436,7 +1328,7 @@ public bool Landing(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 		}
 		else
 		{
-			DirToSlidingTarget = Vector3D.Normalize(PointToPointCourse - GravityVector * MathHelper.ToRadians(3));
+			DirToSlidingTarget = Vector3D.Normalize(PointToPointCourse - GravityVector * ToR(3));
 			double TouchVel = Clamp((-MyVelVert) * MinLandVelocity, 0, MinLandVelocity + 10);
 			SetSpeed(TouchVel, TouchVel - 5, TouchVel + 1);
 		}
@@ -1500,8 +1392,8 @@ public bool GoToPoint(bool BackupRoute, Vector3D PointFrom, Vector3D PointTo, do
 	SlidingTargetDist = 5000;
 	SlidingTarget = PointTo - PointToPointCourse * (DistanceToPoint - SlidingTargetDist);
 
-	double DynamicClamp = Clamp(Math.Abs(Math.Round(Math.Log10(MyVelHor / 1000) * 1, 2)), 0, MaxRadPitch); //Parent.Echo(MyVelHor + "\n" + DynamicClamp);
-	double PitchAngle = Clamp(((Trg_h_asl - MyAltitude) * 0.001), -DynamicClamp, DynamicClamp); //Parent.Echo("\n" + PitchAngle + "  " + MathHelper.ToDegrees(PitchAngle));
+	double DynamicClamp = Clamp(Math.Abs(Math.Round(Math.Log10(MyVelHor / 1000) * 1, 2)), 0, MaxRadPitch);
+	double PitchAngle = Clamp(((Trg_h_asl - MyAltitude) * 0.001), -DynamicClamp, DynamicClamp);
 
 	Vector3D HorDirToTrg = Vector3D.Reject(SlidingTarget - MyPos, GravityVector);
 	DirToSlidingTarget = Vector3D.Normalize(Vector3D.Normalize(HorDirToTrg) - GravityVector * PitchAngle);
@@ -1573,8 +1465,8 @@ public void GoAround(Vector3D PointFrom, Vector3D PointTo, double Trg_h_asl)
 
 	if (UseTCAS) Trg_h_asl += tp.CheckTCAS(false, MyPos, (int)Heading, (int)Trg_h_asl, (int)MyVelHor);
 
-	double DynamicClamp = Clamp(Math.Abs(Math.Round(Math.Log10(MyVelHor / 1000) * 1, 2)), 0, MaxRadPitch); //Parent.Echo(MyVelHor + "\n" + DynamicClamp);
-	double PitchAngle = Clamp(((Trg_h_asl - MyAltitude) * 0.001), -DynamicClamp, DynamicClamp); //Parent.Echo("\n" + PitchAngle + "  " + MathHelper.ToDegrees(PitchAngle));
+	double DynamicClamp = Clamp(Math.Abs(Math.Round(Math.Log10(MyVelHor / 1000) * 1, 2)), 0, MaxRadPitch);
+	double PitchAngle = Clamp(((Trg_h_asl - MyAltitude) * 0.001), -DynamicClamp, DynamicClamp);
 
 	Vector3D HorDirToTrg = Vector3D.Reject(SlidingTarget - MyPos, GravityVector);
 	DirToSlidingTarget = Vector3D.Normalize(Vector3D.Normalize(HorDirToTrg) - GravityVector * PitchAngle);
@@ -1882,9 +1774,9 @@ void GenerateRoute(bool Circle, Vector3D startPoint, Vector3D endPoint, out List
 	Vector3D normal = Vector3D.Cross(StartToCenter, EndToCenter);
 	double angle;
 	if (!Circle) angle = Math.Acos(Vector3D.Dot(StartToCenter, EndToCenter));
-	else angle = MathHelper.ToRadians(360);
+	else angle = ToR(360);
 	double maxAltInRoute = 0;
-	double deltaAngle = Math.Round(MathHelper.ToRadians(dAngle), 6);
+	double deltaAngle = Math.Round(ToR(dAngle), 6);
 	int numPoints = (int)Math.Ceiling(angle / deltaAngle);
 	double currentHeight = 0; int numToDescend = 0; string text = "";
 	if (!Circle)
@@ -1907,7 +1799,7 @@ void GenerateRoute(bool Circle, Vector3D startPoint, Vector3D endPoint, out List
 
 		if (!Circle)
 		{
-			double offset = Math.Round(dist * Math.Tan(MathHelper.ToRadians(Clamp(MaxPitchAngle - 3, 1, 89))));
+			double offset = Math.Round(dist * Math.Tan(ToR(Clamp(MaxPitchAngle - 3, 1, 89))));
 			if (offset > desiredHeight) offset = desiredHeight;
 			if (i == 1)
 			{
@@ -2160,12 +2052,8 @@ class RoutePoint
 #endregion
 
 #region Tools
-double Clamp(double value, double min, double max)
-{
-	value = ((value > max) ? max : value);
-	value = ((value < min) ? min : value);
-	return value;
-}
+double Clamp(double a, double b, double c){return MathHelper.Clamp(a, b, c);}
+double ToR(double a) {return MathHelper.ToRadians(a);}
 public void ReleaseControls()
 {
 	SetAirBrakes(false); SetThrustP(0); GyroOverride(false);
@@ -2208,24 +2096,15 @@ void SaveWNum()
 		ResetBools();
 	}
 }
-public void ResetBools() { PrevRunwayStart = SavedRStart = SavedRStop = new Vector3D(0, 0, 0); onGlideSlope = true; rejectILSTakeoff = false; PullUp = false; tp.ClearLastILS(); }
+public void ResetBools() { PrevRunwayStart = SavedRStart = SavedRStop = Vector3D.Zero; onGlideSlope = true; rejectILSTakeoff = false; PullUp = false; tp.ClearLastILS(); }
 IMyShipController GetControlledShipController()
 {
-	if (controllers.Count == 0)
-		return null;
-
-	foreach (IMyShipController thisController in controllers)
-	{
-		if (thisController.IsUnderControl && thisController.CanControlShip)
-			return thisController;
-	}
+	if (controllers.Count == 0) return null;
+	foreach (IMyShipController c in controllers){if (c.IsUnderControl && c.CanControlShip)return c;}
 	return RC;
 }
 public void Repeat(bool rep) { Ini.Set("Autopilot Settings", "Repeat Route", rep); Me.CustomData = Ini.ToString(); }
-public void ResetInput()
-{
-	ClickCounter = 0;
-}
+public void ResetInput(){ClickCounter = 0;}
 public void ClearErrorList() { SBErrors.Clear(); }
 public bool ErrListNotEmpty() { if (SBErrors.Length > 0) return true; else return false; }
 public string GetErrorsList() { return SBErrors.ToString(); }
@@ -2259,5 +2138,4 @@ class PID
 #endregion
 }
 //=== End Of Script ===
-}
-}
+}}
