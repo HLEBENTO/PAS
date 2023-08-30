@@ -23,7 +23,7 @@ namespace PAS
 partial class Program : MyGridProgram
 {
 // HELLBENT's Pilot Assistant System
-// Version: 1.0.1 (29.08.2023 01:14)
+// Version: 1.0.2 (30.08.2023 20:47)
 // A special thanks to Renesco Rocketman for the inspiration.
 //
 // You can find the guide on YouTube and Steam.
