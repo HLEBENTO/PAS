@@ -16,6 +16,7 @@ using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
 using VRage.Game.ModAPI.Ingame.Utilities;
 using VRage.Game.ObjectBuilders.Definitions;
+using VRage.Library.Utils;
 using VRageMath;
 
 namespace PAS
@@ -23,7 +24,7 @@ namespace PAS
 partial class Program : MyGridProgram
 {
 // HELLBENT's Pilot Assistant System
-// Version: 1.0.2 (30.08.2023 20:47)
+// Version: 1.1.0 (31.08.2023 21:54)
 // A special thanks to Renesco Rocketman for the inspiration.
 //
 // You can find the guide on YouTube and Steam.
@@ -522,7 +523,7 @@ class Transponder
 {
 IMyIntergridCommunicationSystem IGC;
 IMyBroadcastListener Reciever, ILSlistener;
-public string Channel = "Default", ILS_Channel = "Default_ILS", Callsign = "Default", Callsign2 = "Default", LastILS = "";
+public string Channel = "Default", ILS_Channel = "Default_ILS", Callsign = "Default", Callsign2 = "Default_Back", LastILS = "";
 string LCnl = "Default", LILSCnl = "Default_ILS";
 public bool ILSChosen = false; bool LastClearToLand = false; int LastAltPlus = 0, LastNumFlights = 0;
 StringBuilder SBFlightsList, SBTCAS;
@@ -879,7 +880,7 @@ List<RoutePoint> CurrentRoute, CruiseRoute;
 Vector3D PointToPointCourse, SlidingTarget, DirToSlidingTarget, MyPos, MyVel, VecToRunwayStart, GravityVector, RotationAxis;
 string goAroundType = "none", overrideType = "none", CurrentRouteName = "";
 
-double DistanceToPoint, SlidingTargetDist, MyVelHor, RunwayRelativeVel = 0, MyVelVert, PitchCorrection, MyAltitude = 0, Heading = 0, FullDistance = 0, SavedDistance = 0, SavedDistance2 = 0, time_for_wait = 0;
+double DistanceToPoint, SlidingTargetDist, MyVelHor, RunwayRelativeVel = 0, MyVelVert, PitchCorrection, MyAltitude = 0, Heading = 0, FullDistance = 0, SavedDistance = 0, SavedTime = 0, SavedDistance2 = 0, time_for_wait = 0;
 Vector3D PrevRunwayStart = new Vector3D(0, 0, 0), SavedRStart = new Vector3D(0, 0, 0), SavedRStop = new Vector3D(0, 0, 0);
 
 Vector3D LastPointTo = new Vector3D(-10, -10, -10), LastPointFrom = new Vector3D(10, 10, 10);
@@ -912,12 +913,9 @@ List<IMyThrust> thrusters;
 List<IMyDoor> airbrakes;
 List<double> VelBuff;
 PID pitchPID, rollPID, yawPID, VertVelPD, SurfVelPD;
-
-
 Transponder tp;
 LandingGear LG;
 SoundBlock SB;
-
 public AutoPilot(Program parent, string controllerName, string waypointsBlockName, string IncludeTag, IMyProgrammableBlock me, MyIni ini, IMyGridProgramRuntimeInfo runtime, Transponder Trans, LandingGear lg, SoundBlock sb)
 {
 	Parent = parent; Me = me; Ini = ini; Runtime = runtime; tp = Trans; LG = lg; SB = sb;
@@ -938,6 +936,7 @@ public AutoPilot(Program parent, string controllerName, string waypointsBlockNam
 	{
 		ParseRoute(Parent.Storage, out CurrentRouteName, out CurrentRoute);
 		CalculateFullDistance();
+		updateDT();
 	}
 	ReleaseControls();
 }
@@ -969,8 +968,8 @@ public bool Update()
 
 	MyPos = RC.GetPosition();
 	MyVel = RC.GetShipVelocities().LinearVelocity;
-	MyVelVert = Math.Round(-MyVel.Dot(GravityVector), 2);
-	MyVelHor = Math.Round(Vector3D.Reject(MyVel, GravityVector).Length(), 2);
+	MyVelVert = R(-MyVel.Dot(GravityVector), 2);
+	MyVelHor = R(Vector3D.Reject(MyVel, GravityVector).Length(), 2);
 	CalculateHeading();
 	if (ApEngaged || CruiseEngaged || overrideType != "none")
 	{
@@ -1007,6 +1006,7 @@ public bool Update()
 				break;
 			default: break;
 		}
+	if (WaypointNum != lastWaypointNum) updateDT();
 	updateAvionicsList();
 	updateNavList();
 	SaveWNum();
@@ -1078,7 +1078,7 @@ void TriggerRouteTimer(string blockname)
 }
 void updateCruisePoint()
 {
-	if (MoveInput.Z != 0) { wasWS = true; SetThrustP(0); }
+	if (MoveInput.Z != 0) { wasWS = true; SetThrust(0); }
 	else if (MoveInput.Z == 0 && wasWS) { RecordCruiseSpd(); wasWS = false; }
 	if (RotationInput.X != 0) { wasUpDown = true; GyroOverride(false); }
 	else if (RotationInput.X == 0 && wasUpDown) { RecordCruiseAlt(); wasUpDown = false; }
@@ -1106,11 +1106,11 @@ void updateAvionicsList()
 	SBAvionics.Clear();
 	SBAvionics.Append("    === AVIONICS ===\n");
 	SBAvionics.Append(" ALTITUDE   VELOCITY\n");
-	SBAvionics.Append((" [" + Math.Round(MyAltitude, 1) + "m]").PadRight(12) + "[" + MyVelHor + "m/s]\n");
+	SBAvionics.Append((" [" + R(MyAltitude, 1) + "m]").PadRight(12) + "[" + MyVelHor + "m/s]\n");
 	SBAvionics.Append(" VERTICAL   RELATIVE\n");
 	SBAvionics.Append((" [" + MyVelVert + "m/s]").PadRight(12) + "[" + RunwayRelativeVel + "m/s]\n");
 	SBAvionics.Append(" THROTTLE   GEAR\n");
-	SBAvionics.Append((" [" + Math.Round(ThrustPerc * 100, 1) + "%]").PadRight(12));
+	SBAvionics.Append((" [" + R(ThrustPerc * 100, 1) + "%]").PadRight(12));
 	if (LG.Ready) { if (LG.GearStatus) SBAvionics.Append("[DEPLOYED]\n"); else SBAvionics.Append("[RETRACTED]\n"); } else SBAvionics.Append("[NOT SET]\n");
 	SBAvionics.Append(" HEADING    BRAKES\n" + (" [" + Heading + "°]").PadRight(12));
 	if (LG.CReady) { if (LG.Brakes) SBAvionics.Append("[ENGAGED]\n"); else SBAvionics.Append("[RELEASED]\n"); } else SBAvionics.Append("[NOT SET]\n");
@@ -1132,8 +1132,9 @@ void updateNavList()
 		SBNav.Append(" AUTOPILOT [ON]\n");
 		SBNav.Append(" CUR. ROUTE [" + CurrentRouteName + "]\n");
 		SBNav.Append(" ST. [" + string_status + "] [" + WaypointNum + "]\n");
-		SBNav.Append(" DIST [" + Math.Round(CalculateDistancePassed() / 1000, 1) + "/" + Math.Round(FullDistance / 1000, 1) + "km]\n");
-		SBNav.Append(" TO GO [" + Math.Round(CalculateDistanceLeft() / 1000, 1) + ":" + Math.Round(DistanceToPoint / 1000, 1) + "km]\n");
+		SBNav.Append(" DIST [" + R(CalculateDistancePassed() / 1000, 1) + "/" + R(FullDistance / 1000, 1) + "km]\n");
+		SBNav.Append(" TO GO [" + R(CalculateDistanceLeft() / 1000, 1) + ":" + R(DistanceToPoint / 1000, 1) + "km]\n");
+		SBNav.Append(" EST. TIME [" +CalcTimeLeft()+ "]\n");
 		SBNav.Append(" TRGT. SPEED [" + ShowSpeed + "m/s]\n");
 		SBNav.Append(" TRGT. ALT [" + ShowAlt + "m]\n");
 	}
@@ -1164,11 +1165,11 @@ void updateNavList()
 				else SBNav.Append(" AUTOLAND [" + tp.LastILS + "]\n");
 				SBNav.Append(" ST. [" + string_status + "]\n");
 				SBNav.Append(" LANDING SPD [" + ShowSpeed + "m/s]\n");
-				SBNav.Append(" DISTANCE [" + Math.Round(DistanceToPoint / 1000, 1) + "km]\n");
+				SBNav.Append(" DISTANCE [" + R(Math.Max(DistanceToPoint,0) / 1000, 1) + "km]\n");
 			}
 			SBNav.Append(" TRGT. ALTITUDE [" + ShowAlt + "m]\n");
 		}
-		else { SBNav.Append(" CUR. ROUTE [" + CurrentRouteName + "]\n"); SBNav.Append(" CUR. WAYPOINT [" + WaypointNum + "]\n"); }
+		else { SBNav.Append(" CUR. ROUTE [" + CurrentRouteName + "]\n"); SBNav.Append(" CUR. WAYPOINT [" + WaypointNum + "]\n"); if(CurrentRouteName != "") {SBNav.Append(" TO GO [" + R(CalculateDistanceLeft() / 1000, 1) + "km]\n FULL DIST [" + R(FullDistance / 1000, 1) + "km]\n"); SBNav.Append(" EST. TIME [" + CalcTimeLeft() + "]\n"); } }
 	}
 }
 
@@ -1189,7 +1190,7 @@ public bool Takeoff(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 		if (RunwayStart != new Vector3D(0, 0, 0) && RunwayStart != RunwayStop)
 		{
 			PointToPointCourse = Vector3D.Normalize(RunwayStop - RunwayStart);
-			double DistToRW = Math.Round(Vector3D.Distance(MyPos, RunwayStart + Vector3D.Dot(MyPos - RunwayStart, PointToPointCourse) * PointToPointCourse));
+			double DistToRW = R(Vector3D.Distance(MyPos, RunwayStart + Vector3D.Dot(MyPos - RunwayStart, PointToPointCourse) * PointToPointCourse));
 			if (DistToRW > 100) rejectILSTakeoff = true;
 		}
 		SavedRStart = MyPos; SavedRStop = SavedRStart + Vector3D.Reject(RC.WorldMatrix.Forward * 5000, GravityVector);
@@ -1197,7 +1198,7 @@ public bool Takeoff(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 	if (RunwayStart == new Vector3D(0, 0, 0) || RunwayStop == new Vector3D(0, 0, 0) || RunwayStart == RunwayStop || rejectILSTakeoff) { RunwayStart = SavedRStart; RunwayStop = SavedRStop; }
 
 	AltAboveRW = (MyPos - RunwayStart).Dot(-GravityVector);
-	RunwayAlt = Math.Round(MyAltitude - AltAboveRW);
+	RunwayAlt = R(MyAltitude - AltAboveRW);
 	if (RC.DampenersOverride != AlwaysDampiners) RC.DampenersOverride = AlwaysDampiners;
 	if (RC.HandBrake) RC.HandBrake = false;
 	SetAirBrakes(false);
@@ -1212,7 +1213,7 @@ public bool Takeoff(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 	if (AltAboveRW > TakeoffEndAlt) { ResetBools(); return true; }
 
 	if (V2 < VRotate || V2 - VRotate <= 5) V2 += 10;
-	SetSpeed(V2, V2 - 5, V2 + 10);
+	CalcSpeed(V2, V2 - 0.5, V2 + 10);
 	RotationAxis = CalcAxis(DirToSlidingTarget);
 	Rotate(RotationAxis * 0.2);
 
@@ -1249,12 +1250,12 @@ public bool Landing(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 
 	if (PrevRunwayStart == new Vector3D(0, 0, 0)) PrevRunwayStart = RunwayStart;
 	Vector3D rwVel = (RunwayStart - PrevRunwayStart) / timeLimit;
-	RunwayRelativeVel = Math.Round(Vector3D.Dot(MyVel, PointToPointCourse) - Vector3D.Dot(rwVel, PointToPointCourse), 2);
+	RunwayRelativeVel = R(Vector3D.Dot(MyVel, PointToPointCourse) - Vector3D.Dot(rwVel, PointToPointCourse), 2);
 	PrevRunwayStart = RunwayStart;
 
 	VecToRunwayStart = RunwayStart - MyPos;
 	AltAboveRW = (MyPos - RunwayStart).Dot(-GravityVector);
-	RunwayAlt = Math.Round(MyAltitude - AltAboveRW);
+	RunwayAlt = R(MyAltitude - AltAboveRW);
 	DistanceToPoint = VecToRunwayStart.Dot(Vector3D.Normalize(RunwayStop - RunwayStart));
 
 	double BackupAlt = Clamp(LastAltitude, RunwayAlt + 100, RunwayAlt + 1000);
@@ -1281,7 +1282,7 @@ public bool Landing(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 
 	Vector3D VecToRunwayStop = RunwayStop - MyPos;
 	double StopRangeProjection = VecToRunwayStop.Dot(PointToPointCourse);
-	double DistToRW = Math.Round(Vector3D.Distance(MyPos, RunwayStart + Vector3D.Dot(MyPos - RunwayStart, PointToPointCourse) * PointToPointCourse));
+	double DistToRW = R(Vector3D.Distance(MyPos, RunwayStart + Vector3D.Dot(MyPos - RunwayStart, PointToPointCourse) * PointToPointCourse));
 	//Parent.Echo("Distance To Runway: " + DistToRW);
 	if ((StopRangeProjection < 0 && RunwayRelativeVel > 30) || DistanceToPoint < 0 && DistToRW >= 75) onGlideSlope = false;
 
@@ -1324,20 +1325,20 @@ public bool Landing(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 			RC.HandBrake = true;
 			LG.SetBrakes(true);
 			SetAirBrakes(true);
-			SetThrustP(0);
+			SetThrust(0);
 		}
 		else
 		{
 			DirToSlidingTarget = Vector3D.Normalize(PointToPointCourse - GravityVector * ToR(3));
-			double TouchVel = Clamp((-MyVelVert) * MinLandVelocity, 0, MinLandVelocity + 10);
-			SetSpeed(TouchVel, TouchVel - 5, TouchVel + 1);
+			double TouchVel = Clamp((-MyVelVert) * MinLandVelocity, 0, MinLandVelocity + 5);
+			CalcSpeed(TouchVel, TouchVel - 5, TouchVel + 1);
 		}
 		if (RunwayRelativeVel < 10 && RunwayRelativeVel > -10)
 		{
 			if (UseLandTCAS) tp.ClearTCAS("");
 			SetAirBrakes(false);
 			GyroOverride(false);
-			SetThrustP(0);
+			SetThrust(0);
 			RC.HandBrake = true;
 			RC.DampenersOverride = false;
 			LG.SetBrakes(true);
@@ -1346,8 +1347,8 @@ public bool Landing(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 			return true;
 		}
 	}
-	else if (DistanceToPoint > 250 || rwVel.Length() > MaxLandVelocity) { if (UseLandGPWS) if (CheckGPWS(true, RunwayAlt)) if (!PullUp) { PullUp = true; if (TickCounter >= 10) { TickCounter = 0; SB.Request("GPWS"); } } SetSpeed(MaxLandVelocity + rwVel.Length(), MinLandVelocity, AirbrakeVelocity + rwVel.Length()); if (RC.DampenersOverride != AlwaysDampiners) RC.DampenersOverride = AlwaysDampiners; }
-	else { SetSpeed(MaxLandVelocity, MinLandVelocity, AirbrakeVelocity); LG.SetBrakes(false); }
+	else if (DistanceToPoint > 250 || rwVel.Length() > MaxLandVelocity) { if (UseLandGPWS) if (CheckGPWS(true, RunwayAlt)) if (!PullUp) { PullUp = true; if (TickCounter >= 10) { TickCounter = 0; SB.Request("GPWS"); } } CalcSpeed(MaxLandVelocity + rwVel.Length(), MinLandVelocity, AirbrakeVelocity + rwVel.Length()); if (RC.DampenersOverride != AlwaysDampiners) RC.DampenersOverride = AlwaysDampiners; }
+	else { CalcSpeed(MaxLandVelocity, MinLandVelocity, AirbrakeVelocity); LG.SetBrakes(false); }
 
 	//------
 	//rotation
@@ -1392,20 +1393,17 @@ public bool GoToPoint(bool BackupRoute, Vector3D PointFrom, Vector3D PointTo, do
 	SlidingTargetDist = 5000;
 	SlidingTarget = PointTo - PointToPointCourse * (DistanceToPoint - SlidingTargetDist);
 
-	double DynamicClamp = Clamp(Math.Abs(Math.Round(Math.Log10(MyVelHor / 1000) * 1, 2)), 0, MaxRadPitch);
+	double DynamicClamp = Clamp(Math.Abs(R(Math.Log10(MyVelHor / 1000) * 1, 2)), 0, MaxRadPitch);
 	double PitchAngle = Clamp(((Trg_h_asl - MyAltitude) * 0.001), -DynamicClamp, DynamicClamp);
 
 	Vector3D HorDirToTrg = Vector3D.Reject(SlidingTarget - MyPos, GravityVector);
 	DirToSlidingTarget = Vector3D.Normalize(Vector3D.Normalize(HorDirToTrg) - GravityVector * PitchAngle);
 
-	if (DistanceToPoint < 500)
-	{
-		if (UseTCAS) tp.ClearTCAS(""); PullUp = false; return true;
-	}
+	if (DistanceToPoint < 500){if (UseTCAS) tp.ClearTCAS(""); PullUp = false; return true;}
 
 	RotationAxis = CalcAxis(DirToSlidingTarget);
-	if (UseRotate) Rotate(RotationAxis); // * 3 , gyros, RC
-	if (UseThrust) SetSpeed(Speed, Speed - 5, Speed + 10);
+	if (UseRotate) Rotate(RotationAxis);
+	if (UseThrust) CalcSpeed(Speed, Speed - 1, Speed + 5);
 
 	if (!BackupRoute) SetLastPoint(PointFrom, PointTo, Trg_h_asl, Speed);
 	return false;
@@ -1414,7 +1412,7 @@ public bool GoToPoint(bool BackupRoute, Vector3D PointFrom, Vector3D PointTo, do
 #region Wait
 public bool Wait(double seconds)
 {
-	string_status = "WAITING: " + Math.Round(time_for_wait, 1) + " / " + seconds + "s";
+	string_status = "WAITING: " + R(time_for_wait, 1) + " / " + seconds + "s";
 
 	time_for_wait += Runtime.TimeSinceLastRun.TotalSeconds / timeLimit;
 	if (time_for_wait >= seconds)
@@ -1465,13 +1463,13 @@ public void GoAround(Vector3D PointFrom, Vector3D PointTo, double Trg_h_asl)
 
 	if (UseTCAS) Trg_h_asl += tp.CheckTCAS(false, MyPos, (int)Heading, (int)Trg_h_asl, (int)MyVelHor);
 
-	double DynamicClamp = Clamp(Math.Abs(Math.Round(Math.Log10(MyVelHor / 1000) * 1, 2)), 0, MaxRadPitch);
+	double DynamicClamp = Clamp(Math.Abs(R(Math.Log10(MyVelHor / 1000) * 1, 2)), 0, MaxRadPitch);
 	double PitchAngle = Clamp(((Trg_h_asl - MyAltitude) * 0.001), -DynamicClamp, DynamicClamp);
 
 	Vector3D HorDirToTrg = Vector3D.Reject(SlidingTarget - MyPos, GravityVector);
 	DirToSlidingTarget = Vector3D.Normalize(Vector3D.Normalize(HorDirToTrg) - GravityVector * PitchAngle);
 
-	SetSpeed(V2, V2 - 5, V2 + 10);
+	CalcSpeed(V2, V2 - 5, V2 + 10);
 	RotationAxis = CalcAxis(DirToSlidingTarget);
 	Rotate(RotationAxis);
 }
@@ -1491,7 +1489,7 @@ void GetPlanetStats()
 	if (!RCReady || RC.Closed) return;
 	planetCenter = new Vector3D(0, 0, 0); RC.TryGetPlanetPosition(out planetCenter);
 	planetDelta = planetCenter - RC.GetPosition();
-	planetRadius = Math.Round(planetDelta.Length() - MyAltitude, 2);
+	planetRadius = R(planetDelta.Length() - MyAltitude, 2);
 	planetAngleDeg = 15 + (1 - 15) * ((Math.Log(planetRadius) - Math.Log(20000)) / (Math.Log(500000) - Math.Log(20000)));
 }
 
@@ -1500,9 +1498,9 @@ public void GetAltitude()
 	if (!RCReady || RC.Closed) return;
 	double Pre_Alt = 0;
 	RC.TryGetPlanetElevation(MyPlanetElevation.Sealevel, out Pre_Alt);
-	MyAltitude = Math.Round(Math.Abs(Sealevel_Calibrate - Pre_Alt), 2);
+	MyAltitude = R(Pre_Alt - Sealevel_Calibrate, 2);
 	RC.TryGetPlanetElevation(MyPlanetElevation.Surface, out SurfaceAlt);
-	SurfaceAlt = Math.Round(SurfaceAlt, 2);
+	SurfaceAlt = R(SurfaceAlt, 2);
 }
 #endregion
 #region Heading
@@ -1513,7 +1511,7 @@ void CalculateHeading()
 	Vector3D northVec = Vector3D.Cross(eastVec, GravityVector);
 	Vector3D heading = Vector3D.Reject(RC.WorldMatrix.Forward, GravityVector);
 
-	Heading = Math.Round(MathHelper.ToDegrees(Math.Acos(Clamp(heading.Dot(northVec) / Math.Sqrt(heading.LengthSquared() * northVec.LengthSquared()), -1, 1))), 1);
+	Heading = R(MathHelper.ToDegrees(Math.Acos(Clamp(heading.Dot(northVec) / Math.Sqrt(heading.LengthSquared() * northVec.LengthSquared()), -1, 1))), 1);
 
 	if (Vector3D.Dot(RC.WorldMatrix.Forward, eastVec) < 0)
 		Heading = 360 - Heading;
@@ -1543,13 +1541,13 @@ bool CheckGPWS(bool landing = false, double RWAlt = 0)
 #endregion
 
 #region Speed Control
-public void SetSpeed(double speed, double speedLowLimit, double SpeedUpLimit)
+public void CalcSpeed(double speed, double speedLowLimit, double SpeedUpLimit)
 {
-	if (speed > MyVelHor) ThrustPerc = (float)Clamp((speed - MyVelHor) / (speed - speedLowLimit), 0, 1); else ThrustPerc = 0;
-	SetThrustP(ThrustPerc);
-	if (MyVelHor > SpeedUpLimit) SetAirBrakes(true); else SetAirBrakes(false);
+	if (speed > MyVelHor) { if (speed == speedLowLimit) speedLowLimit = speed - 1; ThrustPerc = (float)Clamp((speed - MyVelHor) / (speed - speedLowLimit), 0, 1); SetAirBrakes(false); }
+	else if(MyVelHor > SpeedUpLimit) {ThrustPerc = 0; SetAirBrakes(true); }
+	SetThrust(ThrustPerc);
 }
-public void SetThrustP(float thrustP) { if (thrusters.Count > 0) foreach (var thr in thrusters) thr.ThrustOverridePercentage = thrustP; }
+public void SetThrust(float P) { if (thrusters.Count > 0) foreach (var thr in thrusters) thr.ThrustOverridePercentage = P; }
 public void SetAirBrakes(bool open) { if (airbrakes.Count > 0) { if (open) foreach (IMyDoor airbrake in airbrakes) airbrake.OpenDoor(); else foreach (IMyDoor airbrake in airbrakes) airbrake.CloseDoor(); } }
 #endregion
 #region Axis Control
@@ -1661,7 +1659,7 @@ void ParseRoute(string rawRouteText, out string routename, out List<RoutePoint> 
 
 					point.TimerName = elements[4];
 
-					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = (int)Math.Round(Vector3D.Distance(point.PointFrom, point.PointTo));
+					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
 					route.Add(point);
 				}
 				else SBErrors.Append("\nPoint Parsing failed: " + line);
@@ -1731,7 +1729,7 @@ void ParseRoute(string rawRouteText, out string routename, out List<RoutePoint> 
 					point.ExpectedCallsign = "default";
 					point.TimerName = elements[4];
 
-					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = (int)Math.Round(Vector3D.Distance(point.PointFrom, point.PointTo));
+					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
 					route.Add(point);
 				}
 				else SBErrors.Append("\nPoint Parsing failed: " + line);
@@ -1748,7 +1746,7 @@ void ParseRoute(string rawRouteText, out string routename, out List<RoutePoint> 
 					if (Vector3D.TryParse(elements[2], out _pointTo)) { point.PointTo = _pointTo; pointFrom = _pointTo; }
 					point.ILS_TakeoffLanding = false;
 					point.TimerName = elements[3];
-					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = (int)Math.Round(Vector3D.Distance(point.PointFrom, point.PointTo));
+					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
 					route.Add(point);
 				}
 				else SBErrors.Append("\nPoint Parsing failed: " + line);
@@ -1768,15 +1766,15 @@ void GenerateRoute(bool Circle, Vector3D startPoint, Vector3D endPoint, out List
 	Vector3D pointFrom = startPoint;
 	GetPlanetStats();
 	Vector3D StartToCenter = Vector3D.Normalize(startPoint - planetCenter);
-	double StartAlt = Math.Round(Vector3D.Distance(startPoint, planetCenter) - planetRadius);
+	double StartAlt = R(Vector3D.Distance(startPoint, planetCenter) - planetRadius);
 	Vector3D EndToCenter = Vector3D.Normalize(endPoint - planetCenter);
-	double EndAlt = Math.Round(Vector3D.Distance(endPoint, planetCenter) - planetRadius);
+	double EndAlt = R(Vector3D.Distance(endPoint, planetCenter) - planetRadius);
 	Vector3D normal = Vector3D.Cross(StartToCenter, EndToCenter);
 	double angle;
 	if (!Circle) angle = Math.Acos(Vector3D.Dot(StartToCenter, EndToCenter));
 	else angle = ToR(360);
 	double maxAltInRoute = 0;
-	double deltaAngle = Math.Round(ToR(dAngle), 6);
+	double deltaAngle = R(ToR(dAngle), 6);
 	int numPoints = (int)Math.Ceiling(angle / deltaAngle);
 	double currentHeight = 0; int numToDescend = 0; string text = "";
 	if (!Circle)
@@ -1795,11 +1793,11 @@ void GenerateRoute(bool Circle, Vector3D startPoint, Vector3D endPoint, out List
 		MatrixD rotationMatrix = MatrixD.CreateFromAxisAngle(Vector3D.Normalize(normal), currentAngle);
 		Vector3D currentPoint = Vector3D.Rotate(StartToCenter, rotationMatrix) * planetRadius + planetCenter;
 		Vector3D PointToCenter = Vector3D.Normalize(currentPoint - planetCenter);
-		double dist = Math.Round(Vector3D.Reject(currentPoint - pointFrom, GravityVector).Length());
+		double dist = R(Vector3D.Reject(currentPoint - pointFrom, GravityVector).Length());
 
 		if (!Circle)
 		{
-			double offset = Math.Round(dist * Math.Tan(ToR(Clamp(MaxPitchAngle - 3, 1, 89))));
+			double offset = R(dist * Math.Tan(ToR(Clamp(MaxPitchAngle - 3, 1, 89))));
 			if (offset > desiredHeight) offset = desiredHeight;
 			if (i == 1)
 			{
@@ -1819,13 +1817,13 @@ void GenerateRoute(bool Circle, Vector3D startPoint, Vector3D endPoint, out List
 		}
 		else currentPoint += PointToCenter * desiredHeight;
 
-		dist = (int)Math.Round(Vector3D.Distance(pointFrom, currentPoint));
+		dist = R(Vector3D.Distance(pointFrom, currentPoint));
 		RoutePoint point = new RoutePoint { OperationType = "GoToPoint", PointFrom = pointFrom, Altitude = currentHeight, Speed = 0 };
 		if (!Circle) point.TimerName = AutopilotTimerName; else point.TimerName = "default";
 		if (i < numPoints)
 		{ point.Distance = dist; point.PointTo = currentPoint; if (Math.Abs(currentHeight - desiredHeight) > desiredHeight * 0.1) point.Speed = V2; }
 		else
-		{ point.PointTo = endPoint; point.Distance = (int)Math.Round(Vector3D.Distance(pointFrom, endPoint)); if (!Circle) point.Speed = V2; }
+		{ point.PointTo = endPoint; point.Distance = R(Vector3D.Distance(pointFrom, endPoint)); if (!Circle) point.Speed = V2; }
 		pointFrom = currentPoint;
 		routePoints.Add(point);
 	}
@@ -1892,7 +1890,9 @@ public void BuildRoute(bool Circle, string PointToName, string PointFromName = "
 	CurrentRoute.Clear(); WaypointNum = 0; RepeatRoute = Circle; Ini.Set("Autopilot Settings", "Repeat Route", RepeatRoute); Parent.Me.CustomData = Ini.ToString();
 	GenerateRoute(Circle, PointFrom, PointTo, out CurrentRoute, BasicAPAltitude, planetAngleDeg);
 	CurrentRouteName = "TO " + PointToName;
-	SaveRouteToStorage();
+updateDT();
+CalculateFullDistance();
+SaveRouteToStorage();
 }
 Vector3D GetWaypointWithName(string name)
 {
@@ -2009,25 +2009,16 @@ void SaveRouteToStorage()
 }
 #endregion
 #region Distance
-void CalculateFullDistance()
-{
-	FullDistance = 0;
-	if (CurrentRoute.Count() > 0) foreach (var point in CurrentRoute) FullDistance += point.Distance;
-}
-double CalculateDistanceLeft()
-{
-	double distance = 0;
-	distance += Math.Round(DistanceToPoint, 2);
-	if (WaypointNum != lastWaypointNum && CurrentRoute.Count() > 0) { SavedDistance = 0; for (int i = WaypointNum + 1; i < CurrentRoute.Count(); i++) SavedDistance += CurrentRoute[i].Distance; }
-	distance += SavedDistance;
-	return distance;
-}
+void CalculateFullDistance(){FullDistance = 0;if (CurrentRoute.Count() > 0) foreach (var point in CurrentRoute) FullDistance += point.Distance;}
+double CalculateDistanceLeft(){ return R(DistanceToPoint + SavedDistance, 2); }
+string CalcTimeLeft(){TimeSpan T = TimeSpan.FromSeconds((Math.Max(DistanceToPoint, 0) / (MyVelHor > 10? MyVelHor:BasicAPSpeed)) + SavedTime);return string.Format("{0:D1}:{1:D2}:{2:D2}:{3:D2}",T.Days, T.Hours, T.Minutes, T.Seconds);}
+void updateDT() { if (CurrentRoute.Count() == 0) return; SavedDistance = 0; SavedTime = 0; for (int i = WaypointNum + 1; i < CurrentRoute.Count(); i++) { SavedDistance += CurrentRoute[i].Distance; SavedTime += CurrentRoute[i].Distance / (CurrentRoute[i].Speed != 0 ? CurrentRoute[i].Speed : BasicAPSpeed); } }
 double CalculateDistancePassed()
 {
 	double distance = 0;
 	if (CurrentRoute.Count() >= WaypointNum + 1)
 	{
-		distance += Math.Round(CurrentRoute[WaypointNum].Distance - DistanceToPoint);
+		distance += R(CurrentRoute[WaypointNum].Distance - DistanceToPoint);
 		if (WaypointNum != lastWaypointNum) { SavedDistance2 = 0; for (int i = 0; i < WaypointNum; i++) SavedDistance2 += CurrentRoute[i].Distance; }
 		distance += SavedDistance2;
 	}
@@ -2054,9 +2045,10 @@ class RoutePoint
 #region Tools
 double Clamp(double a, double b, double c){return MathHelper.Clamp(a, b, c);}
 double ToR(double a) {return MathHelper.ToRadians(a);}
+double R(double a, int b = 0) { return Math.Round(a,b); }
 public void ReleaseControls()
 {
-	SetAirBrakes(false); SetThrustP(0); GyroOverride(false);
+	SetAirBrakes(false); SetThrust(0); GyroOverride(false);
 }
 public void SwitchAP(bool status)
 {
