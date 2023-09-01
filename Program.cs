@@ -24,7 +24,7 @@ namespace PAS
 partial class Program : MyGridProgram
 {
 // HELLBENT's Pilot Assistant System
-// Version: 1.1.0 (31.08.2023 21:54)
+// Version: 1.1.1 (01.09.2023 17:13)
 // A special thanks to Renesco Rocketman for the inspiration.
 //
 // You can find the guide on YouTube and Steam.
@@ -1854,18 +1854,10 @@ void GenerateRoute(bool Circle, Vector3D startPoint, Vector3D endPoint, out List
 			}
 		}
 		foreach (var p in routePoints) { if (p.Altitude == maxAltInRoute) p.Altitude = 0; p.PointTo = Vector3D.Round(p.PointTo, 2); }
+		routePoints.Last().Altitude = EndAlt;
 		text += "\n";
 
-		RoutePoint pointLanding = new RoutePoint
-		{
-			TimerName = AutopilotTimerName,
-			OperationType = "Landing",
-			ILS_TakeoffLanding = true,
-			ExpectedCallsign = BasicILSCallsign,
-			LandingAngle = 0,
-			PointTo = new Vector3D(0, 0, 0),
-			PointFrom = new Vector3D(0, 0, 0)
-		};
+		RoutePoint pointLanding = new RoutePoint{TimerName = AutopilotTimerName,OperationType = "Landing",ILS_TakeoffLanding = true,ExpectedCallsign = BasicILSCallsign,LandingAngle = 0,PointTo = Vector3D.Zero,PointFrom = Vector3D.Zero};
 		routePoints.Add(pointLanding);
 	}
 	var Debug = Parent.GridTerminalSystem.GetBlockWithName("!debug") as IMyTextSurface;
