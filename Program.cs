@@ -24,7 +24,7 @@ namespace PAS
 partial class Program : MyGridProgram
 {
 // HELLBENT's Pilot Assistant System
-// Version: 1.1.1 (01.09.2023 17:13)
+// Version: 1.1.2 (11.09.2023 14:23)
 // A special thanks to Renesco Rocketman for the inspiration.
 //
 // You can find the guide on YouTube and Steam.
@@ -461,7 +461,7 @@ public void ShowStatus()
 			WriteSB();
 			MyScreenData.Append("\n TCAS: " +(ap.UseLandTCAS && !ap.UseTCAS ? "Only On Landing" :(!ap.UseLandTCAS && ap.UseTCAS ? "Only In Flight" :(ap.UseLandTCAS && ap.UseTCAS ? "ON" :(!ap.UseLandTCAS && !ap.UseTCAS ? "OFF" : "")))));
 			MyScreenData.Append("\n GPWS: " +(ap.UseLandGPWS && !ap.UseGPWS ? "Only On Landing" :(!ap.UseLandGPWS && ap.UseGPWS ? "Only In Flight" :(ap.UseLandGPWS && ap.UseGPWS ? "ON" :(!ap.UseLandGPWS && !ap.UseGPWS ? "OFF" : "")))));
-			MyScreenData.Append(ap.GetErrorsList());
+			MyScreenData.Append(ap.ErrListNotEmpty()? ap.GetErrorsList() : "");
 		}
 	}
 	else if (WorkMode == "ils")
@@ -470,7 +470,7 @@ public void ShowStatus()
 		else MyScreenData.Append("\n LCD Error:\n '" + LCD_TAG[4] + "' displays were not found.\n");
 		WriteSB();
 	}
-	MyScreenData.Append("\n Next Update: " + Math.Round(blocksUpd - Parent.timeForUpdateBlocks, 1) + " sec");
+	MyScreenData.Append("\n\n Next Update: " + Math.Round(blocksUpd - Parent.timeForUpdateBlocks, 1) + " sec");
 	MyScreenData.Append("\n Runtime: L " + RP.lastMainPartRuntime + " ms. Av " + RP.RunTimeAvrEMA + " ms\n Instructions used: " + Parent.Runtime.CurrentInstructionCount + "/" + Parent.Runtime.MaxInstructionCount + "\n");
 	MyScreen.WriteText(MyScreenData); Parent.Echo(MyScreenData.ToString());
 }
@@ -925,7 +925,7 @@ public AutoPilot(Program parent, string controllerName, string waypointsBlockNam
 	yawPID = new PID(2, 1, .5, -10, 10, timeLimit);
 	VertVelPD = new PID(1, 0, .5, -10, 10, timeLimit);
 	SurfVelPD = new PID(1, 0, 1, -10, 10, timeLimit);
-	SBAvionics = new StringBuilder(); SBNav = new StringBuilder(); SBErrors = new StringBuilder();
+	SBAvionics = new StringBuilder(); SBNav = new StringBuilder(); SBErrors = new StringBuilder("\n");
 	controllers = new List<IMyShipController>(); gyros = new List<IMyGyro>(); thrusters = new List<IMyThrust>(); airbrakes = new List<IMyDoor>();
 	VelBuff = new List<double>(5);
 	updateBlocks(controllerName, waypointsBlockName, IncludeTag);
@@ -1026,7 +1026,7 @@ void EndOverride(bool sound)
 #region route switch
 void updateCurrentPoint()
 {
-	if (CurrentRoute.Count == 0) { SBErrors.Append("\nCurrent Route is empty!"); SwitchAP(false); return; }
+	if (CurrentRoute.Count == 0) { SBErrors.Append("\n Current Route is empty!"); SwitchAP(false); return; }
 	if (WaypointNum > CurrentRoute.Count - 1) { if (RepeatRoute) WaypointNum = 0; else { SwitchAP(false); return; } }
 	switch (CurrentRoute[WaypointNum].OperationType)
 	{
@@ -1073,7 +1073,7 @@ void TriggerRouteTimer(string blockname)
 	List<IMyTimerBlock> Blocks = new List<IMyTimerBlock>();
 	Parent.GridTerminalSystem.GetBlocksOfType(Blocks, x => x.CustomName.Contains(blockname));
 	IMyTimerBlock Block;
-	if (Blocks.Count > 0) Block = Blocks.First(); else { SBErrors.Append("\n" + blockname + " Not Found!"); return; }
+	if (Blocks.Count > 0) Block = Blocks.First(); else { SBErrors.Append("\n " + blockname + " Not Found!"); return; }
 	Block.Trigger();
 }
 void updateCruisePoint()
@@ -1229,9 +1229,9 @@ public void OverrideTakeoff(string PointFromName, string PointToName)
 {
 	Vector3D PointFrom, PointTo;
 	PointTo = GetWaypointWithName(PointToName);
-	if (PointTo == new Vector3D(0, 0, 0)) { SBErrors.Append("\n" + PointToName + " Waypoint Not Found!"); return; }
+	if (PointTo == new Vector3D(0, 0, 0)) { SBErrors.Append("\n " + PointToName + " Waypoint Not Found!"); return; }
 	PointFrom = GetWaypointWithName(PointFromName);
-	if (PointFrom == new Vector3D(0, 0, 0)) { SBErrors.Append("\n" + PointFromName + " Waypoint Not Found!"); return; }
+	if (PointFrom == new Vector3D(0, 0, 0)) { SBErrors.Append("\n " + PointFromName + " Waypoint Not Found!"); return; }
 	SavedRStart = PointFrom; SavedRStop = PointTo;
 	overrideType = "takeoff_cords";
 }
@@ -1245,7 +1245,7 @@ public bool Landing(bool isILS, string expectedCallsign, Vector3D RunwayStart, V
 	if (RunwayStart == new Vector3D(0, 0, 0) || RunwayStop == new Vector3D(0, 0, 0) || RunwayStart == RunwayStop) { RunwayStart = SavedRStart; RunwayStop = SavedRStop; }
 	if (RunwayStart == new Vector3D(0, 0, 0) || RunwayStop == new Vector3D(0, 0, 0) || RunwayStart == RunwayStop) { GoBackupPoints(); string_status = "GO BACKUP"; return false; }
 
-	if (PullUp) { PointToPointCourse = Vector3D.Normalize(Vector3D.Reject(MyPos + RC.WorldMatrix.Forward * 5000 - MyPos, GravityVector)); DirToSlidingTarget = PointToPointCourse - GravityVector * MaxRadPitch; if (SurfaceAlt > (MyAltitude - RunwayAlt) / 4) PullUp = false; }
+	if (PullUp) { PointToPointCourse = Vector3D.Normalize((MyPos + Vector3D.Reject(RC.WorldMatrix.Forward * 5000, GravityVector)) - MyPos); DirToSlidingTarget = PointToPointCourse - GravityVector * MaxRadPitch; if (SurfaceAlt > (MyAltitude - RunwayAlt) / 4) PullUp = false; }
 	else PointToPointCourse = Vector3D.Normalize(RunwayStop - RunwayStart);
 
 	if (PrevRunwayStart == new Vector3D(0, 0, 0)) PrevRunwayStart = RunwayStart;
@@ -1370,9 +1370,9 @@ public void OverrideLanding(string PointFromName, string PointToName)
 {
 	Vector3D PointFrom, PointTo;
 	PointTo = GetWaypointWithName(PointToName);
-	if (PointTo == new Vector3D(0, 0, 0)) { SBErrors.Append("\n" + PointToName + " Waypoint Not Found!"); return; }
+	if (PointTo == new Vector3D(0, 0, 0)) { SBErrors.Append("\n " + PointToName + " Waypoint Not Found!"); return; }
 	PointFrom = GetWaypointWithName(PointFromName);
-	if (PointFrom == new Vector3D(0, 0, 0)) { SBErrors.Append("\n" + PointFromName + " Waypoint Not Found!"); return; }
+	if (PointFrom == new Vector3D(0, 0, 0)) { SBErrors.Append("\n " + PointFromName + " Waypoint Not Found!"); return; }
 	SavedRStart = PointFrom; SavedRStop = PointTo;
 	overrideType = "landing_cords";
 }
@@ -1662,7 +1662,7 @@ void ParseRoute(string rawRouteText, out string routename, out List<RoutePoint> 
 					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
 					route.Add(point);
 				}
-				else SBErrors.Append("\nPoint Parsing failed: " + line);
+				else SBErrors.Append("\n Point Parsing failed: " + line);
 				break;
 			case "Wait":
 				if (elements.Length == 1)
@@ -1686,7 +1686,7 @@ void ParseRoute(string rawRouteText, out string routename, out List<RoutePoint> 
 					point.TimerName = elements[2];
 					route.Add(point);
 				}
-				else SBErrors.Append("\nPoint Parsing failed: " + line);
+				else SBErrors.Append("\n Point Parsing failed: " + line);
 				break;
 			case "Landing":
 				if (elements.Length == 1)
@@ -1732,7 +1732,7 @@ void ParseRoute(string rawRouteText, out string routename, out List<RoutePoint> 
 					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
 					route.Add(point);
 				}
-				else SBErrors.Append("\nPoint Parsing failed: " + line);
+				else SBErrors.Append("\n Point Parsing failed: " + line);
 				break;
 			case "Takeoff":
 				if (elements.Length == 1) { point.ILS_TakeoffLanding = true; point.ExpectedCallsign = "default"; point.TimerName = "default"; route.Add(point); }
@@ -1749,7 +1749,7 @@ void ParseRoute(string rawRouteText, out string routename, out List<RoutePoint> 
 					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
 					route.Add(point);
 				}
-				else SBErrors.Append("\nPoint Parsing failed: " + line);
+				else SBErrors.Append("\n Point Parsing failed: " + line);
 				break;
 			default:
 				break;
@@ -1871,11 +1871,11 @@ public void BuildRoute(bool Circle, string PointToName, string PointFromName = "
 {
 	Vector3D PointFrom, PointTo;
 	PointTo = GetWaypointWithName(PointToName);
-	if (PointTo == new Vector3D(0, 0, 0)) { SBErrors.Append("\n" + PointToName + " Waypoint Not Found!"); return; }
+	if (PointTo == new Vector3D(0, 0, 0)) { SBErrors.Append("\n " + PointToName + " Waypoint Not Found!"); return; }
 	if (PointFromName != "")
 	{
 		PointFrom = GetWaypointWithName(PointFromName);
-		if (PointFrom == new Vector3D(0, 0, 0)) { SBErrors.Append("\n" + PointFromName + " Waypoint Not Found!"); return; }
+		if (PointFrom == new Vector3D(0, 0, 0)) { SBErrors.Append("\n " + PointFromName + " Waypoint Not Found!"); return; }
 	}
 	else PointFrom = MyPos;
 
@@ -1891,7 +1891,7 @@ Vector3D GetWaypointWithName(string name)
 	Vector3D waypoint = new Vector3D(0, 0, 0);
 	if (WaypointsBlock == null || WaypointsBlock.Closed)
 	{
-		SBErrors.Append("\n" + WBName + " Block Not Found! No way to get a waypoint!"); return waypoint;
+		SBErrors.Append("\n " + WBName + " Block Not Found! No way to get a waypoint!"); return waypoint;
 	}
 	string[] lines = WaypointsBlock.CustomData.Split('\n');
 	foreach (string line in lines)
@@ -1911,7 +1911,7 @@ public void RecordRoutePoint()
 {
 	if (WaypointsBlock == null || WaypointsBlock.Closed)
 	{
-		SBErrors.Append("\n" + WBName + " Block Not Found! No way to record a waypoint!"); return;
+		SBErrors.Append("\n " + WBName + " Block Not Found! No way to record a waypoint!"); return;
 	}
 	WaypointsBlock.CustomData += "\nGoToPoint;" + Vector3D.Round(MyPos, 2).ToString() + ";" + MyAltitude + ";" + MyVelHor + ";" + AutopilotTimerName;
 	SB.Request("ObjComp");
@@ -1923,7 +1923,7 @@ public void ExportRoute(string blockname)
 	List<IMyTerminalBlock> Blocks = new List<IMyTerminalBlock>();
 	Parent.GridTerminalSystem.GetBlocksOfType(Blocks, x => x.CustomName.Contains(blockname));
 	IMyTerminalBlock Block;
-	if (Blocks.Count > 0) Block = Blocks.First(); else { SBErrors.Append("\n" + blockname + " Not Found!"); return; }
+	if (Blocks.Count > 0) Block = Blocks.First(); else { SBErrors.Append("\n " + blockname + " Not Found!"); return; }
 	Block.CustomData = CurrentRouteName + "\n";
 	foreach (var point in CurrentRoute)
 	{
@@ -1961,7 +1961,7 @@ public void ImportRoute(string blockname)
 	List<IMyTerminalBlock> Blocks = new List<IMyTerminalBlock>();
 	Parent.GridTerminalSystem.GetBlocksOfType(Blocks, x => x.CustomName.Contains(blockname));
 	IMyTerminalBlock Block;
-	if (Blocks.Count > 0) Block = Blocks.First(); else { SBErrors.Append("\n" + blockname + " Not Found!"); return; }
+	if (Blocks.Count > 0) Block = Blocks.First(); else { SBErrors.Append("\n " + blockname + " Not Found!"); return; }
 	CurrentRoute.Clear(); WaypointNum = 0;
 	ParseRoute(Block.CustomData, out CurrentRouteName, out CurrentRoute);
 	CalculateFullDistance();
@@ -2089,8 +2089,8 @@ IMyShipController GetControlledShipController()
 }
 public void Repeat(bool rep) { Ini.Set("Autopilot Settings", "Repeat Route", rep); Me.CustomData = Ini.ToString(); }
 public void ResetInput(){ClickCounter = 0;}
-public void ClearErrorList() { SBErrors.Clear(); }
-public bool ErrListNotEmpty() { if (SBErrors.Length > 0) return true; else return false; }
+public void ClearErrorList() { SBErrors.Clear(); SBErrors.Append("\n"); }
+public bool ErrListNotEmpty() { if (SBErrors.Length > 1) return true; else return false; }
 public string GetErrorsList() { return SBErrors.ToString(); }
 #endregion
 #region PID
