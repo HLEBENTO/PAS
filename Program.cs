@@ -24,7 +24,7 @@ namespace PAS
 partial class Program : MyGridProgram
 {
 // HELLBENT's Pilot Assistant System
-// Version: 1.1.2 (11.09.2023 14:23)
+// Version: 1.1.3 (04.10.2023 18:00)
 // A special thanks to Renesco Rocketman for the inspiration.
 //
 // You can find the guide on YouTube and Steam.
@@ -598,44 +598,42 @@ public bool CheckLandingPriority(int myDistance, Vector3D myPoint)
 	ClearTCAS("land");
 	SBTCAS.Append(" " + Callsign.PadRight(9).Substring(0, 9) + "| " + Priority.ToString().PadRight(6).Substring(0, 6) + "| " + myDistance + " m\n");
 	bool clearToLand = true;
-	if (Reciever.HasPendingMessage)
+	
+	while (Reciever.HasPendingMessage)
 	{
-		while (Reciever.HasPendingMessage)
+		Message = Reciever.AcceptMessage();
+
+		string receivedData = Message.Data.ToString();
+
+		string[] parsingRecieved = receivedData.Split('|');
+		if (parsingRecieved.Length != 4) continue;
+
+		Vector3D otherPoint = Vector3D.Zero;
+		Vector3D.TryParse(parsingRecieved[3], out otherPoint);
+		if (otherPoint == Vector3D.Zero) continue;
+		if (Vector3D.Distance(myPoint, otherPoint) < 30)
 		{
-			Message = Reciever.AcceptMessage();
-
-			string receivedData = Message.Data.ToString();
-
-			string[] parsingRecieved = receivedData.Split('|');
-			if (parsingRecieved.Length != 4) continue;
-
-			Vector3D otherPoint = Vector3D.Zero;
-			Vector3D.TryParse(parsingRecieved[3], out otherPoint);
-			if (otherPoint == Vector3D.Zero) continue;
-			if (Vector3D.Distance(myPoint, otherPoint) < 30)
+			SBTCAS.Append(" " + parsingRecieved[0].ToUpper().PadRight(9).Substring(0, 9) + "| " + parsingRecieved[1].PadRight(6).Substring(0, 6) + "| " + parsingRecieved[2] + " m\n");
+			int receivedPriority = Convert.ToInt32(parsingRecieved[1]);
+			int receivedDistance = Convert.ToInt32(parsingRecieved[2]);
+			if (Priority < receivedPriority)
 			{
-				SBTCAS.Append(" " + parsingRecieved[0].ToUpper().PadRight(9).Substring(0, 9) + "| " + parsingRecieved[1].PadRight(6).Substring(0, 6) + "| " + parsingRecieved[2] + " m\n");
-				int receivedPriority = Convert.ToInt32(parsingRecieved[1]);
-				int receivedDistance = Convert.ToInt32(parsingRecieved[2]);
-				if (Priority < receivedPriority)
-				{
-					if (myDistance < receivedDistance) clearToLand = true;
-					else if (receivedDistance < 250) clearToLand = false;
-					else clearToLand = true;
-				}
+				if (myDistance < receivedDistance) clearToLand = true;
+				else if (receivedDistance < 750) {clearToLand = false; break;}
+				else clearToLand = true;
+			}
 
-				else if (Priority == receivedPriority)
-				{
-					if (myDistance < receivedDistance) clearToLand = true;
-					else if (myDistance > receivedDistance) clearToLand = false;
-				}
+			else if (Priority == receivedPriority)
+			{
+				if (myDistance < receivedDistance) clearToLand = true;
+				else if (myDistance > receivedDistance) {clearToLand = false; break;}
+			}
 
-				else if (Priority > receivedPriority)
-				{
-					if (myDistance > receivedDistance) clearToLand = false;
-					else if (myDistance < 250) clearToLand = true;
-					else clearToLand = false;
-				}
+			else if (Priority > receivedPriority)
+			{
+				if (myDistance > receivedDistance) {clearToLand = false; break;}
+				else if (myDistance < 750) clearToLand = true;
+				else {clearToLand = false; break;}
 			}
 		}
 	}
