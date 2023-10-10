@@ -24,7 +24,7 @@ namespace PAS
 partial class Program : MyGridProgram
 {
 // HELLBENT's Pilot Assistant System
-// Version: 1.1.3 (04.10.2023 18:00)
+// Version: 1.1.4 (11.10.2023 1:00)
 // A special thanks to Renesco Rocketman for the inspiration.
 //
 // You can find the guide on YouTube and Steam.
@@ -282,7 +282,7 @@ if (timeForUpdateINI >= iniUpd)
 if (timeForUpdateBlocks >= blocksUpd)
 {
 	timeForUpdateBlocks = 0;
-	if (WorkMode == "plane") { AP.updateBlocks(RC_TAG, WB_TAG, Include_TAG); LG.updateBlocks(LG_TAG, LGIndicator_TAG); AP.ResetInput(); }
+	if (WorkMode == "plane") { AP.UpdateBlocks(RC_TAG, WB_TAG, Include_TAG); LG.updateBlocks(LG_TAG, LGIndicator_TAG); AP.ResetInput(); }
 	if (WorkMode == "ils") ils.updateBlocks();
 	SB.updateBlocks(SB_TAG);
 	displayScheduler.updateBlocks();
@@ -343,89 +343,78 @@ public DisplayScheduler(Program parent, RuntimeProfiler rt, string[] lcd_tag, st
 
 public void updateBlocks()
 {
-	if (WorkMode == "plane")
-	{
-		TCASLCDs.Clear(); NavLCDs.Clear(); AvionicsLCDs.Clear();
+if (WorkMode == "plane")
+{
+TCASLCDs.Clear(); NavLCDs.Clear(); AvionicsLCDs.Clear();
 
-		List<IMyTerminalBlock> lcdHosts = new List<IMyTerminalBlock>();
-		Parent.GridTerminalSystem.GetBlocksOfType(lcdHosts, block => block as IMyTextSurfaceProvider != null && block.IsSameConstructAs(Parent.Me));
-		List<string> lines = new List<string>();
-		IMyTextSurface lcd;
+List<IMyTerminalBlock> lcdHosts = new List<IMyTerminalBlock>();
+Parent.GridTerminalSystem.GetBlocksOfType(lcdHosts, block => block as IMyTextSurfaceProvider != null && block.IsSameConstructAs(Parent.Me));
+List<string> lines = new List<string>();
+IMyTextSurface lcd;
 
-		foreach (var block in lcdHosts)
-		{
-			if (block.CustomData.Contains(LCD_TAG[0]))
-			{
-				lines.Clear();
-				new StringSegment(block.CustomData).GetLines(lines);
-				foreach (var line in lines)
-				{
-					if (line.Contains(LCD_TAG[0]))
-					{
-						for (int i = 1; i < LCD_TAG.Length; i++)
-						{
-							if (line.Contains(LCD_TAG[i]))
-							{
-								if (block as IMyTextSurface != null)
-									lcd = block as IMyTextSurface;
-								else
-								{
-									int displayIndex = 0;
-
-									int.TryParse(line.Replace(LCD_TAG[0] + LCD_TAG[i], ""), out displayIndex);
-
-									IMyTextSurfaceProvider t_sp = block as IMyTextSurfaceProvider;
-									displayIndex = Math.Max(0, Math.Min(displayIndex, t_sp.SurfaceCount));
-									lcd = t_sp.GetSurface(displayIndex);
-								}
-
-								lcd.ContentType = ContentType.TEXT_AND_IMAGE;
-								switch (i)
-								{
-									case 1:
-										lcd.FontSize = 0.88f;
-										lcd.Font = "Monospace";
-										TCASLCDs.Add(lcd);
-										break;
-									case 2:
-										lcd.FontSize = 1.1f;
-										lcd.Font = "Monospace";
-										NavLCDs.Add(lcd);
-										break;
-									case 3:
-										lcd.FontSize = 1.1f;
-										lcd.Font = "Monospace";
-										AvionicsLCDs.Add(lcd);
-										break;
-									default:
-										break;
-								}
-								break;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	if (WorkMode == "ils")
-	{
-		FlightsLCDs.Clear();
-		List<IMyTerminalBlock> lcdHosts = new List<IMyTerminalBlock>();
-		Parent.GridTerminalSystem.GetBlocksOfType(lcdHosts, block => block as IMyTextSurface != null && block.IsSameConstructAs(Parent.Me));
-		IMyTextSurface lcd;
-		foreach (var block in lcdHosts)
-		{
-			if (block as IMyTextSurface != null && block.CustomData.Contains(LCD_TAG[4]))
-			{
-				lcd = block as IMyTextSurface;
-				lcd.ContentType = ContentType.TEXT_AND_IMAGE;
-				lcd.Font = "Monospace";
-				FlightsLCDs.Add(lcd);
-			}
-		}
-	}
-	MyScreen = Parent.Me.GetSurface(0); MyScreen.ContentType = ContentType.TEXT_AND_IMAGE;
+foreach (var block in lcdHosts)
+{
+if (block.CustomData.Contains(LCD_TAG[0]))
+{
+lines.Clear();
+new StringSegment(block.CustomData).GetLines(lines);
+foreach (var line in lines)
+{
+if (line.Contains(LCD_TAG[0]))
+{
+for (int i = 1; i < LCD_TAG.Length; i++)
+{
+if (line.Contains(LCD_TAG[i]))
+{
+if (block as IMyTextSurface != null)
+lcd = block as IMyTextSurface;
+else
+{
+int displayIndex = 0;
+int.TryParse(line.Replace(LCD_TAG[0] + LCD_TAG[i], ""), out displayIndex);
+IMyTextSurfaceProvider t_sp = block as IMyTextSurfaceProvider;
+displayIndex = Math.Max(0, Math.Min(displayIndex, t_sp.SurfaceCount));
+lcd = t_sp.GetSurface(displayIndex);
+}
+lcd.ContentType = ContentType.TEXT_AND_IMAGE;
+switch (i)
+{
+case 1:
+lcd.FontSize = 0.88f;
+lcd.Font = "Monospace";
+TCASLCDs.Add(lcd);
+break;
+case 2:
+lcd.FontSize = 1.1f;
+lcd.Font = "Monospace";
+NavLCDs.Add(lcd);
+break;
+case 3:
+lcd.FontSize = 1.1f;
+lcd.Font = "Monospace";
+AvionicsLCDs.Add(lcd);
+break;
+default:
+break;
+}
+break;
+}}}}}}}
+if (WorkMode == "ils")
+{
+FlightsLCDs.Clear();
+List<IMyTerminalBlock> lcdHosts = new List<IMyTerminalBlock>();
+Parent.GridTerminalSystem.GetBlocksOfType(lcdHosts, block => block as IMyTextSurface != null && block.IsSameConstructAs(Parent.Me));
+IMyTextSurface lcd;
+foreach (var block in lcdHosts)
+{
+if (block as IMyTextSurface != null && block.CustomData.Contains(LCD_TAG[4]))
+{
+lcd = block as IMyTextSurface;
+lcd.ContentType = ContentType.TEXT_AND_IMAGE;
+lcd.Font = "Monospace";
+FlightsLCDs.Add(lcd);
+}}}
+MyScreen = Parent.Me.GetSurface(0); MyScreen.ContentType = ContentType.TEXT_AND_IMAGE;
 }
 public void ShowStatus()
 {
@@ -926,7 +915,7 @@ public AutoPilot(Program parent, string controllerName, string waypointsBlockNam
 	SBAvionics = new StringBuilder(); SBNav = new StringBuilder(); SBErrors = new StringBuilder("\n");
 	controllers = new List<IMyShipController>(); gyros = new List<IMyGyro>(); thrusters = new List<IMyThrust>(); airbrakes = new List<IMyDoor>();
 	VelBuff = new List<double>(5);
-	updateBlocks(controllerName, waypointsBlockName, IncludeTag);
+	UpdateBlocks(controllerName, waypointsBlockName, IncludeTag);
 
 	CurrentRoute = new List<RoutePoint>(); CruiseRoute = new List<RoutePoint>();
 
@@ -941,7 +930,7 @@ public AutoPilot(Program parent, string controllerName, string waypointsBlockNam
 #endregion
 
 #region update
-public void updateBlocks(string controllerName, string waypointsBlockName, string IncludeTag)
+public void UpdateBlocks(string controllerName, string waypointsBlockName, string IncludeTag)
 {
 	gyros.Clear(); controllers.Clear(); thrusters.Clear(); airbrakes.Clear(); TickCounter = 0;
 	Parent.GridTerminalSystem.GetBlocksOfType(controllers, x => x.CustomName.Contains(controllerName));
@@ -952,7 +941,7 @@ public void updateBlocks(string controllerName, string waypointsBlockName, strin
 	if (Blocks.Count > 0) WaypointsBlock = Blocks.First(); Blocks.Clear();
 	Parent.GridTerminalSystem.GetBlocksOfType(gyros, x => x.IsSameConstructAs(RC));
 	Parent.GridTerminalSystem.GetBlocksOfType(thrusters, x => x.IsSameConstructAs(RC) && (x.WorldMatrix.Backward == RC.WorldMatrix.Forward || x.CustomName.Contains(IncludeTag)));
-	Parent.GridTerminalSystem.GetBlocksOfType(airbrakes, x => x.IsSameConstructAs(RC) && x.CustomName.Contains("Air Brake"));
+	Parent.GridTerminalSystem.GetBlocksOfType(airbrakes, x => x.IsSameConstructAs(RC) && (x.CustomName.IndexOf("Air Brake", StringComparison.OrdinalIgnoreCase) >= 0 || x.CustomName.IndexOf("Airbrake", StringComparison.OrdinalIgnoreCase) >= 0));
 	if (RCReady != lastRC) { GetPlanetStats(); lastRC = RCReady; }
 }
 public void UpdateAngles() { MaxRadPitch = ToR(MaxPitchAngle); MaxRadRoll = ToR(MaxRollAngle); MaxRadPitchSpd = ToR(MaxPitchSpeed); MaxRadRollSpd = ToR(MaxRollSpeed); MaxRadYawSpd = ToR(MaxYawSpeed); }
@@ -978,7 +967,7 @@ public bool Update()
 		else if (MoveInput.Y == 0 && wasSpaceC) wasSpaceC = false;
 		if (ClickCounter > 1) { ResetInput(); wasSpaceC = false; SB.Request("SpaceInput"); OverrideStop(); }
 	}
-	if (ApEngaged) updateCurrentPoint();
+	if (ApEngaged) UpdateCurrentPoint();
 	if (CruiseEngaged) updateCruisePoint();
 	if (!ApEngaged && !CruiseEngaged)
 		switch (overrideType)
@@ -1022,7 +1011,7 @@ void EndOverride(bool sound)
 }
 #endregion
 #region route switch
-void updateCurrentPoint()
+void UpdateCurrentPoint()
 {
 	if (CurrentRoute.Count == 0) { SBErrors.Append("\n Current Route is empty!"); SwitchAP(false); return; }
 	if (WaypointNum > CurrentRoute.Count - 1) { if (RepeatRoute) WaypointNum = 0; else { SwitchAP(false); return; } }
@@ -1382,7 +1371,7 @@ public bool GoToPoint(bool BackupRoute, Vector3D PointFrom, Vector3D PointTo, do
 	LG.GearUp();
 
 	if (UseGPWS) if (CheckGPWS()) if (!PullUp) { PullUp = true; if (TickCounter >= 10) { TickCounter = 0; SB.Request("GPWS"); } }
-	if (PullUp) { Trg_h_asl = MyAltitude + 2000; PointTo = MyPos + Vector3D.Reject(RC.WorldMatrix.Forward * 5000, GravityVector); PointFrom = MyPos; if (SurfaceAlt > AltLimit + 10) PullUp = false; }
+	if (PullUp) { Trg_h_asl = MyAltitude + 2000; PointTo = planetCenter + Vector3D.Normalize(PointTo - planetCenter) * (Trg_h_asl + planetRadius); if (SurfaceAlt > AltLimit + 10) PullUp = false; }
 	if (UseTCAS) Trg_h_asl += tp.CheckTCAS(true, MyPos, (int)Heading, (int)Trg_h_asl, (int)MyVelHor);
 	if (RC.DampenersOverride != AlwaysDampiners) RC.DampenersOverride = AlwaysDampiners;
 	PointToPointCourse = Vector3D.Normalize(PointTo - PointFrom);
@@ -1615,145 +1604,143 @@ public void Rotate(Vector3D Axis)
 
 void ParseRoute(string rawRouteText, out string routename, out List<RoutePoint> route)
 {
-	route = new List<RoutePoint>();
+route = new List<RoutePoint>();
 
-	string[] lines = rawRouteText.Split('\n');
-	routename = lines[0]; lines[0] = "";
-	Vector3D pointFrom = new Vector3D();
+string[] lines = rawRouteText.Split('\n');
+routename = lines[0]; lines[0] = "";
+Vector3D pointFrom = new Vector3D();
 
-	foreach (string line in lines)
-	{
-		string[] elements = line.Split(';');
+foreach (string line in lines)
+{
+string[] elements = line.Split(';');
 
-		if (elements.Length == 0) continue;
+if (elements.Length == 0) continue;
 
-		RoutePoint point = new RoutePoint();
-		point.OperationType = elements[0];
-		point.Distance = 0;
-		switch (point.OperationType)
-		{
-			case "GoToPoint":
-				if (elements.Length == 5)
-				{
-					Vector3D pointTo;
-					if (!Vector3D.TryParse(elements[1], out pointTo)) pointTo = Vector3D.Zero;
-					point.PointTo = pointTo;
-					if (pointFrom != Vector3D.Zero)
-					{
-						if (pointFrom != pointTo) point.PointFrom = pointFrom;
-						else point.PointFrom = MyPos;
-					}
-					else point.PointFrom = MyPos;
-
-					pointFrom = pointTo;
-
-					double temp_alt;
-					if (double.TryParse(elements[2], out temp_alt)) point.Altitude = temp_alt;
-					else point.Altitude = 0;
-
-					double temp_spd;
-					if (double.TryParse(elements[3], out temp_spd)) point.Speed = temp_spd;
-					else point.Speed = 0;
-
-					point.TimerName = elements[4];
-
-					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
-					route.Add(point);
-				}
-				else SBErrors.Append("\n Point Parsing failed: " + line);
-				break;
-			case "Wait":
-				if (elements.Length == 1)
-				{
-					point.Time = 0; point.TimerName = "default";
-					route.Add(point);
-				}
-				else if (elements.Length == 2)
-				{
-					double temp_time;
-					if (double.TryParse(elements[1], out temp_time)) point.Time = temp_time;
-					else point.Time = 0;
-					point.TimerName = "default";
-					route.Add(point);
-				}
-				else if (elements.Length == 3)
-				{
-					double temp_time;
-					if (double.TryParse(elements[1], out temp_time)) point.Time = temp_time;
-					else point.Time = 0;
-					point.TimerName = elements[2];
-					route.Add(point);
-				}
-				else SBErrors.Append("\n Point Parsing failed: " + line);
-				break;
-			case "Landing":
-				if (elements.Length == 1)
-				{
-					point.ILS_TakeoffLanding = true; point.LandingAngle = 0; point.ExpectedCallsign = "default";
-					point.TimerName = "default"; route.Add(point);
-				}
-				else if (elements.Length == 3)
-				{
-					point.ILS_TakeoffLanding = true;
-					double temp_angle;
-					if (double.TryParse(elements[1], out temp_angle)) point.LandingAngle = temp_angle;
-					else point.LandingAngle = 0;
-					point.ExpectedCallsign = elements[2];
-					point.TimerName = "default";
-					route.Add(point);
-				}
-				else if (elements.Length == 4)
-				{
-					point.ILS_TakeoffLanding = true;
-					double temp_angle;
-					if (double.TryParse(elements[1], out temp_angle)) point.LandingAngle = temp_angle;
-					else point.LandingAngle = 0;
-					point.ExpectedCallsign = elements[2];
-					point.TimerName = elements[3];
-					route.Add(point);
-				}
-				else if (elements.Length == 5)
-				{
-					Vector3D _pointFrom;
-					if (Vector3D.TryParse(elements[1], out _pointFrom)) point.PointFrom = _pointFrom;
-					Vector3D _pointTo;
-					if (Vector3D.TryParse(elements[2], out _pointTo)) { point.PointTo = _pointTo; pointFrom = _pointTo; }
-					point.ILS_TakeoffLanding = false;
-
-					double temp_angle;
-					if (double.TryParse(elements[3], out temp_angle)) point.LandingAngle = temp_angle;
-					else point.LandingAngle = 0;
-
-					point.ExpectedCallsign = "default";
-					point.TimerName = elements[4];
-
-					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
-					route.Add(point);
-				}
-				else SBErrors.Append("\n Point Parsing failed: " + line);
-				break;
-			case "Takeoff":
-				if (elements.Length == 1) { point.ILS_TakeoffLanding = true; point.ExpectedCallsign = "default"; point.TimerName = "default"; route.Add(point); }
-				else if (elements.Length == 2) { point.ILS_TakeoffLanding = true; point.ExpectedCallsign = elements[1]; point.TimerName = "default"; route.Add(point); }
-				else if (elements.Length == 3) { point.ILS_TakeoffLanding = true; point.ExpectedCallsign = elements[1]; point.TimerName = elements[2]; route.Add(point); }
-				else if (elements.Length == 4)
-				{
-					Vector3D _pointFrom;
-					if (Vector3D.TryParse(elements[1], out _pointFrom)) point.PointFrom = _pointFrom;
-					Vector3D _pointTo;
-					if (Vector3D.TryParse(elements[2], out _pointTo)) { point.PointTo = _pointTo; pointFrom = _pointTo; }
-					point.ILS_TakeoffLanding = false;
-					point.TimerName = elements[3];
-					if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
-					route.Add(point);
-				}
-				else SBErrors.Append("\n Point Parsing failed: " + line);
-				break;
-			default:
-				break;
-		}
-	}
+RoutePoint point = new RoutePoint();
+point.OperationType = elements[0];
+point.Distance = 0;
+switch (point.OperationType)
+{
+case "GoToPoint":
+if (elements.Length == 5)
+{
+Vector3D pointTo;
+if (!Vector3D.TryParse(elements[1], out pointTo)) pointTo = Vector3D.Zero;
+point.PointTo = pointTo;
+if (pointFrom != Vector3D.Zero)
+{
+	if (pointFrom != pointTo) point.PointFrom = pointFrom;
+	else point.PointFrom = MyPos;
 }
+else point.PointFrom = MyPos;
+
+pointFrom = pointTo;
+
+double temp_alt;
+if (double.TryParse(elements[2], out temp_alt)) point.Altitude = temp_alt;
+else point.Altitude = 0;
+
+double temp_spd;
+if (double.TryParse(elements[3], out temp_spd)) point.Speed = temp_spd;
+else point.Speed = 0;
+
+point.TimerName = elements[4];
+
+if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
+route.Add(point);
+}
+else SBErrors.Append("\n Point Parsing failed: " + line);
+break;
+case "Wait":
+if (elements.Length == 1)
+{
+point.Time = 0; point.TimerName = "default";
+route.Add(point);
+}
+else if (elements.Length == 2)
+{
+double temp_time;
+if (double.TryParse(elements[1], out temp_time)) point.Time = temp_time;
+else point.Time = 0;
+point.TimerName = "default";
+route.Add(point);
+}
+else if (elements.Length == 3)
+{
+double temp_time;
+if (double.TryParse(elements[1], out temp_time)) point.Time = temp_time;
+else point.Time = 0;
+point.TimerName = elements[2];
+route.Add(point);
+}
+else SBErrors.Append("\n Point Parsing failed: " + line);
+break;
+case "Landing":
+if (elements.Length == 1)
+{
+point.ILS_TakeoffLanding = true; point.LandingAngle = 0; point.ExpectedCallsign = "default";
+point.TimerName = "default"; route.Add(point);
+}
+else if (elements.Length == 3)
+{
+point.ILS_TakeoffLanding = true;
+double temp_angle;
+if (double.TryParse(elements[1], out temp_angle)) point.LandingAngle = temp_angle;
+else point.LandingAngle = 0;
+point.ExpectedCallsign = elements[2];
+point.TimerName = "default";
+route.Add(point);
+}
+else if (elements.Length == 4)
+{
+point.ILS_TakeoffLanding = true;
+double temp_angle;
+if (double.TryParse(elements[1], out temp_angle)) point.LandingAngle = temp_angle;
+else point.LandingAngle = 0;
+point.ExpectedCallsign = elements[2];
+point.TimerName = elements[3];
+route.Add(point);
+}
+else if (elements.Length == 5)
+{
+Vector3D _pointFrom;
+if (Vector3D.TryParse(elements[1], out _pointFrom)) point.PointFrom = _pointFrom;
+Vector3D _pointTo;
+if (Vector3D.TryParse(elements[2], out _pointTo)) { point.PointTo = _pointTo; pointFrom = _pointTo; }
+point.ILS_TakeoffLanding = false;
+
+double temp_angle;
+if (double.TryParse(elements[3], out temp_angle)) point.LandingAngle = temp_angle;
+else point.LandingAngle = 0;
+
+point.ExpectedCallsign = "default";
+point.TimerName = elements[4];
+
+if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
+route.Add(point);
+}
+else SBErrors.Append("\n Point Parsing failed: " + line);
+break;
+case "Takeoff":
+if (elements.Length == 1) { point.ILS_TakeoffLanding = true; point.ExpectedCallsign = "default"; point.TimerName = "default"; route.Add(point); }
+else if (elements.Length == 2) { point.ILS_TakeoffLanding = true; point.ExpectedCallsign = elements[1]; point.TimerName = "default"; route.Add(point); }
+else if (elements.Length == 3) { point.ILS_TakeoffLanding = true; point.ExpectedCallsign = elements[1]; point.TimerName = elements[2]; route.Add(point); }
+else if (elements.Length == 4)
+{
+Vector3D _pointFrom;
+if (Vector3D.TryParse(elements[1], out _pointFrom)) point.PointFrom = _pointFrom;
+Vector3D _pointTo;
+if (Vector3D.TryParse(elements[2], out _pointTo)) { point.PointTo = _pointTo; pointFrom = _pointTo; }
+point.ILS_TakeoffLanding = false;
+point.TimerName = elements[3];
+if (point.PointTo != Vector3D.Zero && point.PointFrom != Vector3D.Zero) point.Distance = R(Vector3D.Distance(point.PointFrom, point.PointTo));
+route.Add(point);
+}
+else SBErrors.Append("\n Point Parsing failed: " + line);
+break;
+default:
+break;
+}}}
 #endregion
 #region GenerateRoute
 
